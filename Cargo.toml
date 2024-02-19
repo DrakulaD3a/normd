@@ -1,0 +1,12 @@
+[package]
+name = "unnamed-note-app"
+version = "0.1.0"
+edition = "2021"
+authors = ["Lukáš Strnad"]
+categories = ["command-line-utilities"]
+repository = "https://github.com/DrakulaD3a/unnamed-note-app"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
