@@ -31,8 +31,9 @@ command = [
 need_stdout = true
 
 [jobs.doc]
-command = ["cargo", "doc", "--color", "always", "--no-deps"]
+command = ["cargo", "doc", "--color", "always"]
 need_stdout = false
+on_success = "back" # so that we don't open the browser at each change
 
 # If the doc compiles, then it opens in your browser and bacon switches
 # to the previous job
@@ -60,3 +61,4 @@ allow_warnings = true
 # should go in your personal global prefs.toml file instead.
 [keybindings]
 # alt-m = "job:my-job"
+d = "job:doc"

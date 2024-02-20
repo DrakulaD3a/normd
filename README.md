@@ -1,3 +1,3 @@
-# Unnamed Note App
+# NORMD
 
 Best note taking app ever created.
