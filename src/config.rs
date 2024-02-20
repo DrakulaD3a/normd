@@ -30,7 +30,15 @@ impl Config {
 
     fn get_path() -> PathBuf {
         env::var_os("NORMD_CONFIG_HOME").map_or_else(
-            || dirs::config_dir().unwrap().join("normd/config.toml"),
+            || {
+                dirs::config_dir()
+                    .unwrap_or_else(|| {
+                        eprintln!("Failed to get config directory");
+                        // TODO: Exit codes
+                        std::process::exit(1);
+                    })
+                    .join("normd/config.toml")
+            },
             |path| PathBuf::from(path).join("config.toml"),
         )
     }
@@ -40,7 +48,13 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             editor: None,
-            notes_dir: dirs::home_dir().unwrap().join("notes/"),
+            notes_dir: dirs::home_dir()
+                .unwrap_or_else(|| {
+                    eprintln!("Failed to get home directory");
+                    // TODO: Exit codes
+                    std::process::exit(1);
+                })
+                .join("notes/"),
         }
     }
 }

@@ -6,7 +6,11 @@
 //!
 //! Maybe will even be able to launch a local server to preview the notes
 
-use std::{fs, process::Stdio, time::SystemTime};
+use std::{
+    fs,
+    process::Stdio,
+    time::{Duration, SystemTime},
+};
 
 use args::{Action, Args};
 use clap::Parser;
@@ -25,7 +29,11 @@ async fn main() {
         .unwrap_or_else(|| std::env::var("EDITOR").unwrap_or_else(|_| "nano".to_string()));
 
     if !config.notes_dir.exists() {
-        fs::create_dir_all(&config.notes_dir).unwrap();
+        fs::create_dir_all(&config.notes_dir).unwrap_or_else(|e| {
+            eprintln!("Failed to create notes directory: {e}");
+            // TODO: Exit codes
+            std::process::exit(1);
+        });
     }
 
     match args.action {
@@ -33,7 +41,7 @@ async fn main() {
             let name = name.unwrap_or_else(|| {
                 let time_now = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or(Duration::from_secs(0))
                     .as_secs()
                     .to_string();
                 format!("{time_now}.md")
@@ -42,14 +50,26 @@ async fn main() {
             Command::new(&editor)
                 .arg(config.notes_dir.join(name))
                 .spawn()
-                .expect("Failed to spawn editor")
+                .unwrap_or_else(|e| {
+                    eprintln!("Failed to spawn editor: {e}");
+                    // TODO: Exit codes
+                    std::process::exit(1);
+                })
                 .wait()
                 .await
-                .expect("An error occured while running editor");
+                .expect("An error occured while running editor!");
         }
         Action::List => {
-            for entry in fs::read_dir(config.notes_dir).unwrap() {
-                let dir = entry.unwrap();
+            for entry in fs::read_dir(config.notes_dir).unwrap_or_else(|e| {
+                eprintln!("Failed to read notes directory: {e}");
+                // TODO: Exit codes
+                std::process::exit(1);
+            }) {
+                let dir = entry.unwrap_or_else(|e| {
+                    eprintln!("Failed to read notes directory: {e}");
+                    // TODO: Exit codes
+                    std::process::exit(1);
+                });
                 println!("{}", dir.file_name().to_string_lossy());
             }
         }
@@ -58,9 +78,16 @@ async fn main() {
                 .kill_on_drop(true)
                 .stdout(Stdio::piped())
                 .spawn()
-                .expect("Failed to spawn fzf");
+                .unwrap_or_else(|e| {
+                    eprintln!("Failed to spawn fzf: {e}");
+                    // TODO: Exit codes
+                    std::process::exit(1);
+                });
 
-            let output = child.wait_with_output().await.unwrap();
+            let output = child
+                .wait_with_output()
+                .await
+                .expect("An error occured while running fzf!");
             let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
             println!("{}{}", config.notes_dir.display(), selected);
@@ -68,12 +95,20 @@ async fn main() {
         Action::View { name } => {
             println!(
                 "{}",
-                fs::read_to_string(config.notes_dir.join(name)).unwrap()
+                match fs::read_to_string(config.notes_dir.join(name)) {
+                    Ok(content) => content,
+                    Err(e) => {
+                        eprintln!("Failed to read file: {e}");
+                        // TODO: Exit codes
+                        std::process::exit(1);
+                    }
+                }
             );
         }
-        Action::Remove { name } => fs::remove_file(config.notes_dir.join(name)).unwrap(),
+        Action::Remove { name } => fs::remove_file(config.notes_dir.join(name))
+            .unwrap_or_else(|e| eprintln!("Failed to remove file: {e}")),
         Action::Interactive => {
-            todo!()
+            println!("Not yet implemented");
         }
     }
 }
