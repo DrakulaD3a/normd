@@ -6,18 +6,27 @@
 //!
 //! Maybe will even be able to launch a local server to preview the notes
 
-use std::{env::current_dir, fs, process::Stdio, time::SystemTime};
+use std::{fs, process::Stdio, time::SystemTime};
 
 use args::{Action, Args};
 use clap::Parser;
+use config::Config;
 use tokio::process::Command;
 
 mod args;
+mod config;
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    let editor = std::env::var("EDITOR").unwrap_or_else(|_| "nano".to_string());
+    let config = Config::new(args.config);
+    let editor = config
+        .editor
+        .unwrap_or_else(|| std::env::var("EDITOR").unwrap_or_else(|_| "nano".to_string()));
+
+    if !config.notes_dir.exists() {
+        fs::create_dir_all(&config.notes_dir).unwrap();
+    }
 
     match args.action {
         Action::New { name } => {
@@ -30,9 +39,8 @@ async fn main() {
                 format!("{time_now}.md")
             });
 
-            // TODO: Use the notes directory not cwd
             Command::new(&editor)
-                .arg(current_dir().unwrap().join(name))
+                .arg(config.notes_dir.join(name))
                 .spawn()
                 .expect("Failed to spawn editor")
                 .wait()
@@ -40,8 +48,7 @@ async fn main() {
                 .expect("An error occured while running editor");
         }
         Action::List => {
-            // TODO: Use the notes directory not cwd
-            for entry in fs::read_dir(current_dir().unwrap()).unwrap() {
+            for entry in fs::read_dir(config.notes_dir).unwrap() {
                 let dir = entry.unwrap();
                 println!("{}", dir.file_name().to_string_lossy());
             }
@@ -56,17 +63,15 @@ async fn main() {
             let output = child.wait_with_output().await.unwrap();
             let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
-            // TODO: Use the notes directory not cwd
-            println!("{}{}", current_dir().unwrap().display(), selected);
+            println!("{}{}", config.notes_dir.display(), selected);
         }
         Action::View { name } => {
-            // TODO: Use the notes directory not cwd
             println!(
                 "{}",
-                fs::read_to_string(current_dir().unwrap().join(name)).unwrap()
+                fs::read_to_string(config.notes_dir.join(name)).unwrap()
             );
         }
-        Action::Remove { name } => fs::remove_file(current_dir().unwrap().join(name)).unwrap(),
+        Action::Remove { name } => fs::remove_file(config.notes_dir.join(name)).unwrap(),
         Action::Interactive => {
             todo!()
         }
