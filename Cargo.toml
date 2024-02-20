@@ -2,7 +2,8 @@
 name = "normd"
 version = "0.1.0"
 edition = "2021"
-authors = ["Lukáš Strnad"]
+authors = ["Lukáš Strnad strnad.lukas@proton.me"]
+description = "A simple CLI tool to help you with notetaking without all the disctraction"
 categories = ["command-line-utilities"]
 repository = "https://github.com/DrakulaD3a/normd"
 license = "MIT"
@@ -20,3 +21,9 @@ tokio = { version = "1.36.0", features = [
     "process",
 ] }
 toml = "0.8.10"
+
+[profile.release]
+strip = true
+lto = true
+panic = "abort"
+codegen-units = 1
