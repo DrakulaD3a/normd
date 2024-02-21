@@ -8,6 +8,7 @@
 
 use std::{
     fs,
+    io::stdin,
     process::Stdio,
     time::{Duration, SystemTime},
 };
@@ -57,7 +58,11 @@ async fn main() {
                 })
                 .wait()
                 .await
-                .expect("An error occured while running editor!");
+                .unwrap_or_else(|e| {
+                    eprintln!("An error occured while running editor: {e}");
+                    // TODO: Exit codes
+                    std::process::exit(1);
+                });
         }
         Action::List => {
             for entry in fs::read_dir(config.notes_dir).unwrap_or_else(|e| {
@@ -85,10 +90,11 @@ async fn main() {
                     std::process::exit(1);
                 });
 
-            let output = child
-                .wait_with_output()
-                .await
-                .expect("An error occured while running fzf!");
+            let output = child.wait_with_output().await.unwrap_or_else(|e| {
+                eprintln!("An error occured while running fzf!: {e}");
+                // TODO: Exit codes
+                std::process::exit(1);
+            });
             let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
             println!("{}{}", config.notes_dir.display(), selected);
@@ -96,7 +102,7 @@ async fn main() {
         Action::View { name } => {
             println!(
                 "{}",
-                match fs::read_to_string(config.notes_dir.join(name)) {
+                match fs::read_to_string(config.notes_dir.join(get_name_or_stdin(name))) {
                     Ok(content) => content,
                     Err(e) => {
                         eprintln!("Failed to read file: {e}");
@@ -106,10 +112,22 @@ async fn main() {
                 }
             );
         }
-        Action::Remove { name } => fs::remove_file(config.notes_dir.join(name))
+        Action::Remove { name } => fs::remove_file(config.notes_dir.join(get_name_or_stdin(name)))
             .unwrap_or_else(|e| eprintln!("Failed to remove file: {e}")),
         Action::Interactive => {
             println!("Not yet implemented");
         }
     }
+}
+
+fn get_name_or_stdin(name: Option<String>) -> String {
+    name.unwrap_or_else(|| {
+        let mut buf = String::new();
+        stdin().read_line(&mut buf).unwrap_or_else(|e| {
+            eprintln!("Failed to read from stdin: {e}");
+            // TODO: Exit codes
+            std::process::exit(1);
+        });
+        buf.trim().to_string()
+    })
 }

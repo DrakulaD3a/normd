@@ -13,10 +13,10 @@ pub enum Action {
     Find,
 
     #[command(alias = "v")]
-    View { name: String },
+    View { name: Option<String> },
 
     #[command(alias = "rm")]
-    Remove { name: String },
+    Remove { name: Option<String> },
 
     #[command(alias = "i")]
     Interactive,
