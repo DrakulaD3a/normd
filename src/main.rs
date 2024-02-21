@@ -76,6 +76,7 @@ async fn main() {
         Action::Find => {
             let child = Command::new("fzf")
                 .kill_on_drop(true)
+                .current_dir(&config.notes_dir)
                 .stdout(Stdio::piped())
                 .spawn()
                 .unwrap_or_else(|e| {
