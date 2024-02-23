@@ -39,7 +39,7 @@ async fn main() {
 
     match args.action {
         Action::New { name } => {
-            let name = name.unwrap_or_else(|| {
+            let mut name = name.unwrap_or_else(|| {
                 let time_now = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .unwrap_or(Duration::from_secs(0))
@@ -47,6 +47,10 @@ async fn main() {
                     .to_string();
                 format!("{time_now}.md")
             });
+
+            if !name.ends_with(".md") {
+                name += ".md";
+            }
 
             Command::new(&editor)
                 .arg(config.notes_dir.join(name))
