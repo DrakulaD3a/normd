@@ -6,6 +6,7 @@ use std::{env, fs, path::PathBuf};
 pub struct Config {
     pub editor: Option<String>,
     pub notes_dir: PathBuf,
+    pub port: u16,
 }
 
 impl Config {
@@ -55,6 +56,7 @@ impl Default for Config {
                     std::process::exit(1);
                 })
                 .join("notes/"),
+            port: 8080,
         }
     }
 }

@@ -20,6 +20,7 @@ use tokio::process::Command;
 
 mod args;
 mod config;
+mod server;
 
 #[tokio::main]
 async fn main() {
@@ -120,6 +121,12 @@ async fn main() {
             .unwrap_or_else(|e| eprintln!("Failed to remove file: {e}")),
         Action::Interactive => {
             println!("Not yet implemented");
+        }
+        Action::Serve { port } => {
+            server::Server::new(port.unwrap_or(8080), &config.notes_dir)
+                .serve()
+                .await
+                .unwrap();
         }
     }
 }

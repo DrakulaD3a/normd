@@ -13,12 +13,15 @@ license = "MIT"
 [dependencies]
 clap = { version = "4.5.1", features = ["derive"] }
 dirs = "5.0.1"
+markdown = "0.3.0"
 serde = { version = "1.0.196", features = ["derive"] }
 tokio = { version = "1.36.0", features = [
+    "io-util",
+    "macros",
+    "net",
+    "process",
     "rt",
     "rt-multi-thread",
-    "macros",
-    "process",
 ] }
 toml = "0.8.10"
 

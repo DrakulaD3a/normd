@@ -20,6 +20,9 @@ pub enum Action {
 
     #[command(alias = "i")]
     Interactive,
+
+    #[command(alias = "s")]
+    Serve { port: Option<u16> },
 }
 
 #[derive(Parser, Debug)]
