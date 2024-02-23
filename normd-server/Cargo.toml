@@ -1,0 +1,21 @@
+[package]
+name = "normd-server"
+version = "0.1.0"
+edition = "2021"
+authors = ["Lukáš Strnad <strnad.lukas@proton.me>"]
+description = "Normd file server"
+categories = ["web-programming::http-server"]
+repository = "https://github.com/DrakulaD3a/normd"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+askama = "0.12.1"
+markdown = "0.3.0"
+tokio = { version = "1.36.0", features = [
+    "io-util",
+    "net",
+    "rt",
+    "rt-multi-thread",
+] }

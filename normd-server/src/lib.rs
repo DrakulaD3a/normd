@@ -35,8 +35,6 @@ impl Server {
     pub async fn serve(self) -> io::Result<()> {
         let listener = TcpListener::bind(format!("127.0.0.1:{}", self.port)).await?;
 
-        dbg!(&self.files);
-
         loop {
             self.handle_stream(listener.accept().await?.0).await?;
         }

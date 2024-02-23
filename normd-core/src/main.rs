@@ -9,6 +9,7 @@
 use std::{
     fs,
     io::stdin,
+    path::Path,
     process::Stdio,
     time::{Duration, SystemTime},
 };
@@ -20,7 +21,6 @@ use tokio::process::Command;
 
 mod args;
 mod config;
-mod server;
 
 #[tokio::main]
 async fn main() {
@@ -40,18 +40,15 @@ async fn main() {
 
     match args.action {
         Action::New { name } => {
-            let mut name = name.unwrap_or_else(|| {
+            let name = Path::new(&name.unwrap_or_else(|| {
                 let time_now = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .unwrap_or(Duration::from_secs(0))
                     .as_secs()
                     .to_string();
                 format!("{time_now}.md")
-            });
-
-            if !name.ends_with(".md") {
-                name += ".md";
-            }
+            }))
+            .with_extension("md");
 
             Command::new(&editor)
                 .arg(config.notes_dir.join(name))
@@ -123,7 +120,7 @@ async fn main() {
             println!("Not yet implemented");
         }
         Action::Serve { port } => {
-            server::Server::new(port.unwrap_or(8080), &config.notes_dir)
+            normd_server::Server::new(port.unwrap_or(8080), &config.notes_dir)
                 .serve()
                 .await
                 .unwrap();
