@@ -23,19 +23,15 @@ mod args;
 mod config;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let config = Config::new(args.config);
+    let config = Config::new(args.config)?;
     let editor = config
         .editor
         .unwrap_or_else(|| std::env::var("EDITOR").unwrap_or_else(|_| "nano".to_string()));
 
     if !config.notes_dir.exists() {
-        fs::create_dir_all(&config.notes_dir).unwrap_or_else(|e| {
-            eprintln!("Failed to create notes directory: {e}");
-            // TODO: Exit codes
-            std::process::exit(1);
-        });
+        fs::create_dir_all(&config.notes_dir)?;
     }
 
     match args.action {
@@ -52,31 +48,13 @@ async fn main() {
 
             Command::new(&editor)
                 .arg(config.notes_dir.join(name))
-                .spawn()
-                .unwrap_or_else(|e| {
-                    eprintln!("Failed to spawn editor: {e}");
-                    // TODO: Exit codes
-                    std::process::exit(1);
-                })
+                .spawn()?
                 .wait()
-                .await
-                .unwrap_or_else(|e| {
-                    eprintln!("An error occured while running editor: {e}");
-                    // TODO: Exit codes
-                    std::process::exit(1);
-                });
+                .await?;
         }
         Action::List => {
-            for entry in fs::read_dir(config.notes_dir).unwrap_or_else(|e| {
-                eprintln!("Failed to read notes directory: {e}");
-                // TODO: Exit codes
-                std::process::exit(1);
-            }) {
-                let dir = entry.unwrap_or_else(|e| {
-                    eprintln!("Failed to read notes directory: {e}");
-                    // TODO: Exit codes
-                    std::process::exit(1);
-                });
+            for entry in fs::read_dir(config.notes_dir)? {
+                let dir = entry?;
                 println!("{}", dir.file_name().to_string_lossy());
             }
         }
@@ -85,18 +63,9 @@ async fn main() {
                 .kill_on_drop(true)
                 .current_dir(&config.notes_dir)
                 .stdout(Stdio::piped())
-                .spawn()
-                .unwrap_or_else(|e| {
-                    eprintln!("Failed to spawn fzf: {e}");
-                    // TODO: Exit codes
-                    std::process::exit(1);
-                });
+                .spawn()?;
 
-            let output = child.wait_with_output().await.unwrap_or_else(|e| {
-                eprintln!("An error occured while running fzf!: {e}");
-                // TODO: Exit codes
-                std::process::exit(1);
-            });
+            let output = child.wait_with_output().await?;
             let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
             println!("{}{}", config.notes_dir.display(), selected);
@@ -104,38 +73,30 @@ async fn main() {
         Action::View { name } => {
             println!(
                 "{}",
-                match fs::read_to_string(config.notes_dir.join(get_name_or_stdin(name))) {
-                    Ok(content) => content,
-                    Err(e) => {
-                        eprintln!("Failed to read file: {e}");
-                        // TODO: Exit codes
-                        std::process::exit(1);
-                    }
-                }
+                fs::read_to_string(config.notes_dir.join(get_name_or_stdin(name)?))?
             );
         }
-        Action::Remove { name } => fs::remove_file(config.notes_dir.join(get_name_or_stdin(name)))
+        Action::Remove { name } => fs::remove_file(config.notes_dir.join(get_name_or_stdin(name)?))
             .unwrap_or_else(|e| eprintln!("Failed to remove file: {e}")),
         Action::Interactive => {
             println!("Not yet implemented");
         }
         Action::Serve { port } => {
-            normd_server::Server::new(port.unwrap_or(8080), &config.notes_dir)
+            normd_server::Server::new(port.unwrap_or(8080), &config.notes_dir)?
                 .serve()
-                .await
-                .unwrap();
+                .await?;
         }
     }
+
+    Ok(())
 }
 
-fn get_name_or_stdin(name: Option<String>) -> String {
-    name.unwrap_or_else(|| {
+fn get_name_or_stdin(name: Option<String>) -> anyhow::Result<String> {
+    if let Some(name) = name {
+        Ok(name)
+    } else {
         let mut buf = String::new();
-        stdin().read_line(&mut buf).unwrap_or_else(|e| {
-            eprintln!("Failed to read from stdin: {e}");
-            // TODO: Exit codes
-            std::process::exit(1);
-        });
-        buf.trim().to_string()
-    })
+        stdin().read_line(&mut buf)?;
+        Ok(buf.trim().to_string())
+    }
 }

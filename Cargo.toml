@@ -7,3 +7,7 @@ strip = true
 lto = true
 panic = "abort"
 codegen-units = 1
+
+[workspace.dependencies]
+anyhow = "1.0"
+tokio = "1.36"

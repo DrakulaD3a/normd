@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use std::{env, fs, path::PathBuf};
 
-// TODO: Config the cli tools to use
 #[derive(Deserialize)]
 pub struct Config {
     pub editor: Option<String>,
@@ -10,38 +9,37 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(path: Option<PathBuf>) -> Self {
-        toml::from_str(
-            match &fs::read_to_string(path.unwrap_or_else(Self::get_path)) {
-                Ok(content) => content,
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    eprintln!("Config file not found");
-                    eprintln!("Using the default configuration");
-                    return Self::default();
-                }
-                Err(_) => {
-                    eprintln!("Failed to read config file");
-                    eprintln!("Using the default configuration");
-                    return Self::default();
-                }
-            },
-        )
-        .unwrap_or_default()
+    pub fn new(path: Option<PathBuf>) -> anyhow::Result<Self> {
+        let path = if let Some(path) = path {
+            path
+        } else {
+            Self::get_path()
+        };
+
+        Ok(toml::from_str(match &fs::read_to_string(path) {
+            Ok(content) => content,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                eprintln!("Config file not found");
+                eprintln!("Using the default configuration");
+                return Ok(Self::default());
+            }
+            Err(_) => {
+                eprintln!("Failed to read config file");
+                eprintln!("Using the default configuration");
+                return Ok(Self::default());
+            }
+        })
+        .unwrap_or_default())
     }
 
     fn get_path() -> PathBuf {
-        env::var_os("NORMD_CONFIG_HOME").map_or_else(
-            || {
-                dirs::config_dir()
-                    .unwrap_or_else(|| {
-                        eprintln!("Failed to get config directory");
-                        // TODO: Exit codes
-                        std::process::exit(1);
-                    })
-                    .join("normd/config.toml")
-            },
-            |path| PathBuf::from(path).join("config.toml"),
-        )
+        if let Some(path) = env::var_os("NORMD_CONFIG_HOME") {
+            PathBuf::from(path).join("config.toml")
+        } else {
+            dirs::config_dir()
+                .expect("Failed to get config directory")
+                .join("normd/config.toml")
+        }
     }
 }
 

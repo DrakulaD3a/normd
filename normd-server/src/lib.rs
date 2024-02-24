@@ -1,8 +1,7 @@
 use askama::Template;
 use std::collections::HashMap;
 use std::fs::{read_dir, read_to_string};
-use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -16,27 +15,26 @@ pub struct Server {
 }
 
 impl Server {
-    #[must_use]
-    pub fn new(port: u16, directory: &PathBuf) -> Self {
-        let files = get_files(directory);
+    pub fn new(port: u16, directory: &Path) -> anyhow::Result<Self> {
+        let files = get_files(directory)?;
         let markdown: HashMap<String, String> = files
             .iter()
             .map(|f| {
-                (
+                Ok((
                     f.display().to_string(),
-                    markdown::to_html(&read_to_string(directory.join(f)).unwrap()),
-                )
+                    markdown::to_html(&read_to_string(directory.join(f))?),
+                ))
             })
-            .collect();
+            .collect::<anyhow::Result<HashMap<String, String>>>()?;
 
-        Self {
+        Ok(Self {
             port,
             files,
             markdown,
-        }
+        })
     }
 
-    pub async fn serve(self) -> io::Result<()> {
+    pub async fn serve(self) -> anyhow::Result<()> {
         let listener = TcpListener::bind(format!("127.0.0.1:{}", self.port)).await?;
 
         loop {
@@ -44,12 +42,12 @@ impl Server {
         }
     }
 
-    async fn handle_stream(&self, mut stream: TcpStream) -> io::Result<()> {
+    async fn handle_stream(&self, mut stream: TcpStream) -> anyhow::Result<()> {
         let request_line = BufReader::new(&mut stream)
             .lines()
             .next_line()
             .await?
-            .unwrap();
+            .expect("No request line");
         let current_path =
             request_line.split_whitespace().collect::<Vec<_>>()[1].trim_start_matches('/');
 
@@ -60,20 +58,22 @@ impl Server {
             .collect::<Vec<_>>();
 
         let response = if files_to_show.len() == 1 {
-            let render = files_to_show
+            let render: Option<String> = files_to_show
                 .iter()
-                .map(|f| self.markdown.get(f.to_str().unwrap()).unwrap().to_string())
+                .map(|f| Some(self.markdown.get(f.to_str()?)?.to_string()))
                 .collect();
 
-            let template = templates::MarkdownTemplate { content: render };
-            format!("HTTP/1.1 200 OK\r\n\r\n{}", template.render().unwrap())
+            let template = templates::MarkdownTemplate {
+                content: render.expect("Couldn't parse file"),
+            };
+            format!("HTTP/1.1 200 OK\r\n\r\n{}", template.render()?)
         } else {
             let render = files_to_show.iter().fold(String::new(), |acc, f| {
                 format!("{acc}<a href='{f}'>{f}</a><br>", f = f.display())
             });
 
             let template = templates::FilesTemplate { content: render };
-            format!("HTTP/1.1 200 OK\r\n\r\n{}", template.render().unwrap())
+            format!("HTTP/1.1 200 OK\r\n\r\n{}", template.render()?)
         };
 
         stream.write_all(response.as_bytes()).await?;
@@ -84,16 +84,19 @@ impl Server {
     }
 }
 
-fn get_files(directory: &PathBuf) -> Vec<PathBuf> {
-    read_dir(directory)
-        .unwrap()
-        .flat_map(|e| {
-            let path = e.unwrap().path();
+fn get_files(directory: &Path) -> anyhow::Result<Vec<PathBuf>> {
+    Ok(read_dir(directory)?
+        .map(|e| {
+            let path = e?.path();
             if path.is_dir() {
-                get_files(&path)
+                Ok(get_files(&path)?)
             } else {
-                vec![path.strip_prefix(directory).unwrap().to_path_buf()]
+                Ok(vec![path.strip_prefix(directory)?.to_path_buf()])
             }
         })
-        .collect()
+        .collect::<anyhow::Result<Vec<Vec<PathBuf>>>>()?
+        .iter()
+        .flatten()
+        .cloned()
+        .collect())
 }
