@@ -10,11 +10,7 @@ pub struct Config {
 
 impl Config {
     pub fn new(path: Option<PathBuf>) -> anyhow::Result<Self> {
-        let path = if let Some(path) = path {
-            path
-        } else {
-            Self::get_path()
-        };
+        let path = path.unwrap_or_else(Self::get_path);
 
         Ok(toml::from_str(match &fs::read_to_string(path) {
             Ok(content) => content,
@@ -33,13 +29,13 @@ impl Config {
     }
 
     fn get_path() -> PathBuf {
-        if let Some(path) = env::var_os("NORMD_CONFIG_HOME") {
-            PathBuf::from(path).join("config.toml")
-        } else {
+        PathBuf::from(env::var_os("NORMD_CONFIG_HOME").unwrap_or_else(|| {
             dirs::config_dir()
                 .expect("Failed to get config directory")
-                .join("normd/config.toml")
-        }
+                .join("normd")
+                .into_os_string()
+        }))
+        .join("config.toml")
     }
 }
 
