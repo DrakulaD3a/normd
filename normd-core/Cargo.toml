@@ -1,6 +1,6 @@
 [package]
 name = "normd-core"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Lukáš Strnad <strnad.lukas@proton.me>"]
 description = "A simple CLI tool to help you with notetaking without all the disctraction"
@@ -11,7 +11,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-normd-server = { path = "../normd-server", version = "0.1.0" }
+normd-server = { path = "../normd-server", version = "0.2.0" }
 
 anyhow = { workspace = true }
 clap = { version = "4.5.1", features = ["derive"] }
