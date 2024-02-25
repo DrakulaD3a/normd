@@ -15,6 +15,12 @@ pub struct Server {
 }
 
 impl Server {
+    /// Function to create a new `Server` instance.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the directory passed in can't be read or the files
+    /// inside are not a valid markdown.
     pub fn new(port: u16, directory: &Path) -> anyhow::Result<Self> {
         let files = get_files(directory)?;
         let markdown: HashMap<String, String> = files
@@ -34,6 +40,11 @@ impl Server {
         })
     }
 
+    /// Function to start the server.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the server can't be started.
     pub async fn serve(self) -> anyhow::Result<()> {
         let listener = TcpListener::bind(format!("127.0.0.1:{}", self.port)).await?;
 
